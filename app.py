@@ -130,31 +130,50 @@ col10.metric("PWD Participants", f"{pwd_count} ({pwd_pct:.1f}%)")
 # === 8B. Detailed TA Breakdown ===
 df_clean['gender_norm'] = df_clean['Gender of owner'].str.lower().str.strip()
 
-youth_female = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)')
-                            & (df_clean['gender_norm'].str.contains('female', na=False))])
+# AGE + GENDER
+youth_female = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)') & (df_clean['gender_norm'] == 'female')])
+youth_male = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)') & (df_clean['gender_norm'] == 'male')])
+adult_female = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)') & (df_clean['gender_norm'] == 'female')])
+adult_male = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)') & (df_clean['gender_norm'] == 'male')])
 
-youth_male = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)')
-                          & (df_clean['gender_norm'].str.contains('male', na=False))])
+# PWD BY AGE + GENDER
+pwd_young_female = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)') &
+                                (df_clean['gender_norm'] == 'female') &
+                                (df_clean['PWD Status'] == 'Yes')])
 
-adult_female = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)')
-                            & (df_clean['gender_norm'].str.contains('female', na=False))])
+pwd_young_male = len(df_clean[(df_clean['Age Group'] == 'Youth (18–35)') &
+                              (df_clean['gender_norm'] == 'male') &
+                              (df_clean['PWD Status'] == 'Yes')])
 
-adult_male = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)')
-                          & (df_clean['gender_norm'].str.contains('male', na=False))])
+pwd_adult_female = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)') &
+                                (df_clean['gender_norm'] == 'female') &
+                                (df_clean['PWD Status'] == 'Yes')])
+
+pwd_adult_male = len(df_clean[(df_clean['Age Group'] == 'Adult (36+)') &
+                              (df_clean['gender_norm'] == 'male') &
+                              (df_clean['PWD Status'] == 'Yes')])
 
 pwd_total = len(df_clean[df_clean['PWD Status'] == 'Yes'])
 
-st.markdown("### 📌 TA Breakdown Summary (Youth & Adults by Gender)")
+# Display section
+st.markdown("### 📌 TA Breakdown Summary (Youth, Adults & PWD)")
 colA, colB, colC, colD, colE = st.columns(5)
 colA.metric("Young Female (18–35)", youth_female)
 colB.metric("Young Male (18–35)", youth_male)
 colC.metric("Female 36+", adult_female)
 colD.metric("Male 36+", adult_male)
-colE.metric("PWD (All Genders)", pwd_total)
+colE.metric("PWD (All)", pwd_total)
 
-# Filter summary text
-filter_text = f"County: {selected_county}" if selected_county != 'All' else "All Counties"
-st.caption(f"⏱️ Data Filter: {start_date} to {end_date} | {filter_text} | Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.markdown("### ♿ PWD Breakdown (By Age + Gender)")
+colP1, colP2, colP3, colP4 = st.columns(4)
+colP1.metric("PWD Young Female", pwd_young_female)
+colP2.metric("PWD Young Male", pwd_young_male)
+colP3.metric("PWD Female 36+", pwd_adult_female)
+colP4.metric("PWD Male 36+", pwd_adult_male)
+
+st.caption(f"⏱️ Data Filter: {start_date} to {end_date} | "
+           f"{selected_county if selected_county != 'All' else 'All Counties'} "
+           f"| Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # === 9. Audit Section ===
 st.markdown("---")
@@ -178,7 +197,8 @@ with audit_tab1:
     if len(same_id_diff_phone) > 0:
         st.info(f"**{len(ids_with_multiple_phones)} unique IDs** with multiple phones ({len(same_id_diff_phone)} records)")
         st.dataframe(same_id_diff_phone)
-        st.download_button("⬇️ Download", df_to_excel_bytes(same_id_diff_phone), "Same_ID_Different_Phone.xlsx")
+        st.download_button("⬇️ Download", df_to_excel_bytes(same_id_diff_phone),
+                           "Same_ID_Different_Phone.xlsx")
     else:
         st.success("✅ None found")
 
@@ -187,7 +207,8 @@ with audit_tab2:
     if len(same_phone_diff_id) > 0:
         st.info(f"**{len(phones_with_multiple_ids)} phones** used by multiple IDs ({len(same_phone_diff_id)} records)")
         st.dataframe(same_phone_diff_id)
-        st.download_button("⬇️ Download", df_to_excel_bytes(same_phone_diff_id), "Same_Phone_Different_ID.xlsx")
+        st.download_button("⬇️ Download", df_to_excel_bytes(same_phone_diff_id),
+                           "Same_Phone_Different_ID.xlsx")
     else:
         st.success("✅ None found")
 
@@ -196,7 +217,8 @@ with audit_tab3:
     if len(exact_duplicates) > 0:
         st.info(f"**{len(exact_duplicates)} exact duplicates found**")
         st.dataframe(exact_duplicates)
-        st.download_button("⬇️ Download", df_to_excel_bytes(exact_duplicates), "Exact_Duplicates.xlsx")
+        st.download_button("⬇️ Download", df_to_excel_bytes(exact_duplicates),
+                           "Exact_Duplicates.xlsx")
     else:
         st.success("✅ None found")
 
@@ -234,28 +256,4 @@ st.bar_chart(data=df_clean['Age Group'].value_counts())
 st.bar_chart(data=df_clean['PWD Status'].value_counts())
 
 # === 12. Combined Excel Download ===
-def all_to_excel(dfs: dict):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for name, data in dfs.items():
-            data.to_excel(writer, sheet_name=name, index=False)
-    return output.getvalue()
-
-excel_all = all_to_excel({
-    "Cleaned_Data": df_clean,
-    "County_Summary": county_summary,
-    "Gender_Summary": gender_summary,
-    "Age_Group_Summary": age_summary,
-    "PWD_Summary": pwd_summary,
-    "Audit_Same_ID_Diff_Phone": same_id_diff_phone,
-    "Audit_Same_Phone_Diff_ID": same_phone_diff_id,
-    "Audit_Exact_Duplicates": exact_duplicates
-})
-
-st.markdown("### 💾 Combined Download")
-st.download_button(
-    label="⬇️ Download All Summaries + Audit Reports",
-    data=excel_all,
-    file_name="TA_Cleaned_Data_Report_All.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+def all_to_excel(dfs: dict
